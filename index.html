@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="SET">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>SET Solfa Ear Trainer</title>
@@ -291,6 +291,11 @@ try{ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){ wi
   <span class="sskip">Tap to skip</span>
 </button>
 
+<script>
+/* An installed Android app already shows its own opening screen, so skip ours there to avoid two. */
+try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: standalone)').matches){ document.getElementById('splash').hidden=true; } }catch(e){}
+</script>
+
 <div class="app" id="app" data-mode="identify">
   <header class="top">
     <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="7" rx="2"/><rect x="17" y="14" width="4" height="7" rx="2"/></svg>
@@ -569,7 +574,7 @@ var $=function(s){return document.querySelector(s)};
 
 /* Opening screen: shows the logo for a moment, then fades away. Tap, or any key, skips it. */
 (function(){
-  var sp=document.getElementById('splash'); if(!sp) return;
+  var sp=document.getElementById('splash'); if(!sp||sp.hidden) return;
   var gone=false;
   function hide(){
     if(gone) return; gone=true;
