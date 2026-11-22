@@ -778,8 +778,8 @@ function seq(list,end){
   var c=ensureCtx();
   if(!c){setStatus('Sound is not available in this browser.',false); return;}
   stopAll(); stopListening();
-  /* Identify mode: a running timer keeps running while Do or the note is replayed. */
-  if(!(cfg.mode==='identify'&&tTimer!==null)) pauseTimer();
+  /* A running timer keeps running while Do or the note is replayed, in every mode. */
+  if(tTimer===null) pauseTimer();
   bus=c.createGain(); bus.gain.value=1; bus.connect(c.destination);
   var t=c.currentTime+0.06;
   list.forEach(function(it){
@@ -869,7 +869,7 @@ function timeUp(){
     els.feedback.className='feedback bad';
     els.feedback.innerHTML='Time is up. It was '+note1(q.note)+'. Try again.'+tip(q.note);
     update();
-    seq([{midi:q.tonic,dur:0.9,gap:0.4},{midi:q.target,dur:1.8}]);
+    seq([{midi:q.target,dur:1.8}]);
   }else{
     timedOut=true; heard=true; update();
     seq([{midi:q.target,dur:2,cb:function(){setStatus(label(q.note),true)}}],function(){setStatus('Time is up. Did you match it?',false)});
@@ -1067,6 +1067,10 @@ function finishIdentify(i){
 }
 function replayAnswer(){
   if(!q) return;
+  if(cfg.mode==='sing'){
+    seq([{midi:q.target,dur:1.8,cb:function(){setStatus(label(q.note),true)}}]);
+    return;
+  }
   seq([{midi:q.tonic,dur:0.9,gap:0.4,cb:function(){setStatus('Do',true)}},{midi:q.target,dur:1.5,cb:function(){setStatus(label(q.note),true)}}]);
 }
 function submit(i){
@@ -1473,7 +1477,7 @@ function renderAnswers(){
 function renderOrb(){
   var idMode=cfg.mode==='identify';
   var echo=!idMode&&cfg.sub==='echo';
-  var showSyl=!idMode&&phase!=='idle'&&q&&(!echo||phase==='answered');
+  var showSyl=!idMode&&phase!=='idle'&&q;
   els.orbSyl.hidden=!showSyl;
   if(showSyl) els.orbSyl.innerHTML=SYL[q.note].n+(SYL[q.note].hi?'<small>high</small>':'');
   els.icPlay.toggleAttribute('hidden',!(phase==='idle'&&!showSyl));
