@@ -222,6 +222,12 @@ select{font:inherit; min-height:46px; border-radius:10px; border:1px solid var(-
 .lvl[aria-pressed="true"] b{color:var(--accent-text)}
 .tips ol{margin:0 0 20px; padding-left:1.25em; display:flex; flex-direction:column; gap:12px}
 .tips ul{margin:0 0 20px; padding-left:1.25em; display:flex; flex-direction:column; gap:10px}
+.myth{margin:0 0 14px; padding:12px 14px; border-radius:14px; background:var(--bad-soft); border-left:4px solid var(--bad)}
+.myth b{display:block; font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:var(--bad); margin-bottom:4px}
+.myth span{font-size:.98rem; line-height:1.4}
+.truth{margin:0 0 14px; padding:12px 14px; border-radius:14px; background:var(--good-soft); border-left:4px solid var(--good)}
+.truth b{display:block; font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:var(--good); margin-bottom:4px}
+.truth span{font-size:.98rem; line-height:1.4}
 .tips p{font-size:.95rem; line-height:1.45; margin:0 0 20px}
 .tips li{font-size:.95rem; line-height:1.45}
 .tips li b{font-weight:600}
@@ -270,7 +276,17 @@ select{font:inherit; min-height:46px; border-radius:10px; border:1px solid var(-
 <script>
 /* Firebase settings for Google sign-in. Leave as null to run without accounts. */
 window.SOLFA_FIREBASE=null;
-try{ if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){ window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); } }catch(e){}
+try{
+  if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+    window.addEventListener('load',function(){
+      var had=!!navigator.serviceWorker.controller, touched=false, once=false;
+      document.addEventListener('pointerdown',function(){ touched=true; },{once:true,capture:true});
+      /* a new version took over: refresh once, but only if the person has not started using the app yet */
+      navigator.serviceWorker.addEventListener('controllerchange',function(){ if(had&&!touched&&!once){ once=true; location.reload(); } });
+      navigator.serviceWorker.register('sw.js').then(function(reg){ reg.update(); }).catch(function(){});
+    });
+  }
+}catch(e){}
 </script>
 
 
@@ -534,6 +550,17 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
         <li><b>Challenge.</b> The out-breath grows by 1 s every 3 breaths. Tap Too long, go back whenever it stops being easy.</li>
         <li><b>Hold, do not push.</b> A steady, easy note lasts longer than a loud one. Stop before you strain.</li>
       </ol>
+      <h3>A common myth about breath control</h3>
+      <div class="myth"><b>Myth</b><span>"The longer I can hold my breath, the better my breath control."</span></div>
+      <div class="truth"><b>The truth</b><span>Holding your breath trains your body to keep air in. Singing needs the opposite: a slow, steady stream of air going out. A singer is not judged by how long they can hold air, but by how evenly they can let it go.</span></div>
+      <h3>What to do instead</h3>
+      <ul>
+        <li><b>Breathe in low and easy.</b> Let your belly and lower ribs widen. Do not gulp air or lift your shoulders.</li>
+        <li><b>Make the out-breath long and even,</b> like a soft, steady "sss" or blowing through a straw. Build it up a little at a time with the Challenge.</li>
+        <li><b>Keep the flow steady on the note.</b> Start gently. If you push a lot of air at the start, you run out too soon.</li>
+        <li><b>Test it by singing.</b> How long you can hold a note steadily on pitch is the real measure, so use Hold note.</li>
+        <li><b>Stay relaxed.</b> Stop if you feel strain or dizziness.</li>
+      </ul>
       <h3>Why train your breath</h3>
       <ul>
         <li><b>Longer phrases</b> without gasping for air halfway through.</li>

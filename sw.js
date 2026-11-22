@@ -1,5 +1,5 @@
 /* Solfa Ear Trainer service worker: opens offline, and picks up new versions when online. */
-const CACHE='solfa-v17';
+const CACHE='solfa-v18';
 const SHELL=['./','index.html','manifest.json','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>Promise.all(SHELL.map(u=>c.add(u).catch(()=>{})))).then(()=>self.skipWaiting()));
@@ -15,9 +15,11 @@ self.addEventListener('fetch',e=>{
   const font=u.hostname==='fonts.googleapis.com'||u.hostname==='fonts.gstatic.com';
   if(!own&&!font) return;               // sign-in and cloud calls go straight to the network
   if(r.mode==='navigate'){
-    // newest page first, saved copy when offline
-    e.respondWith(fetch(r).then(res=>{const cp=res.clone();caches.open(CACHE).then(c=>c.put('index.html',cp));return res;})
-      .catch(()=>caches.match('index.html')));
+    // always ask the network for the newest page (skipping the phone's 10-minute saved copy); saved copy only when offline
+    e.respondWith(fetch(r.url,{cache:'no-store'}).then(res=>{
+      if(!res||!res.ok||res.redirected) throw new Error('bad');
+      const cp=res.clone(); caches.open(CACHE).then(c=>c.put('index.html',cp)); return res;
+    }).catch(()=>caches.match('index.html')));
     return;
   }
   e.respondWith(caches.match(r).then(hit=>{
