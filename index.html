@@ -246,6 +246,21 @@ select{font:inherit; min-height:46px; border-radius:10px; border:1px solid var(-
 .bar .lbl{font-weight:600}
 .bar .track{height:10px; border-radius:5px; background:var(--surface-2); overflow:hidden}
 .bar .fill{height:100%; background:linear-gradient(90deg,var(--ring-a),var(--ring-b)); border-radius:5px}
+.bar.minor .lbl{color:var(--warn)}
+.legend{font-size:.75rem; color:var(--muted); margin:0 0 10px}
+.legend b{color:var(--warn)}
+.lvcard{background:var(--surface-2); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:16px}
+.lvtop{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap}
+.lvtop b{font-family:var(--font-display); font-size:1.35rem}
+.lvtop span{color:var(--accent-text); font-weight:700; font-variant-numeric:tabular-nums}
+.lvcard .track{height:10px; border-radius:5px; background:var(--surface); overflow:hidden; margin:10px 0}
+.lvcard .fill{display:block; height:100%; border-radius:5px; background:linear-gradient(90deg,var(--ring-a),var(--ring-b)); width:0}
+.lvcard p{margin:0 0 8px; font-size:.88rem; line-height:1.45}
+.trend{display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:.85rem; font-weight:600}
+.trend svg{width:46%; height:34px; flex:none; overflow:visible}
+.trend .up{color:var(--good)} .trend .dn{color:var(--bad)}
+.weakbox{margin:0 0 16px; font-size:.88rem; line-height:1.45}
+.weakbox button{margin-top:6px; min-height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--accent); background:transparent; color:var(--accent-text); font-weight:600}
 .bar .val{text-align:right; color:var(--muted); font-variant-numeric:tabular-nums}
 .link{background:none; border:0; padding:8px 0; color:var(--muted); text-decoration:underline; font-size:.85rem; min-height:44px}
 
@@ -585,6 +600,20 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
     <div class="backdrop" data-close></div>
     <div class="panel">
       <div class="ph"><h2 id="hStat">Progress</h2><button type="button" class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <h3>Your level</h3>
+      <div class="lvcard">
+        <div class="lvtop"><b id="lvName">Calibrating</b><span id="lvScore"></span></div>
+        <div class="track"><span class="fill" id="lvFill"></span></div>
+        <p id="lvMsg"></p>
+        <div class="trend"><span id="lvTrend"></span><svg id="lvSpark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+      </div>
+      <div class="nums">
+        <div class="num"><b id="dToday">0</b><span>today (goal <span id="dGoal">20</span>)</span></div>
+        <div class="num"><b id="dStreak">0</b><span>day streak</span></div>
+        <div class="num"><b id="dTotal">0</b><span>answered, all time</span></div>
+      </div>
+      <h3>Weak spots</h3>
+      <div class="weakbox"><span id="wkText"></span><br><button type="button" id="wkBtn" hidden>Practise these more</button></div>
       <h3>This session</h3>
       <div class="nums">
         <div class="num"><b id="sAnswered">0</b><span id="sAnsweredL">answered</span></div>
@@ -592,6 +621,7 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
         <div class="num"><b id="sStreak">0</b><span>streak (best <span id="sBest">0</span>)</span></div>
       </div>
       <h3>Accuracy by note, all sessions</h3>
+      <p class="legend"><b>Orange</b> = minor notes (Me, Le, Te)</p>
       <div class="bars" id="bars"></div>
       <button type="button" class="link" id="reset">Clear saved progress</button>
     </div>
@@ -694,6 +724,18 @@ var life=store.get('solfa-life',null);
 if(!Array.isArray(life)) life=[];
 while(life.length<N) life.push({ok:0,n:0});
 life=life.slice(0,N).map(function(l){return (l&&typeof l.n==='number')?l:{ok:0,n:0}});
+/* dayLog: one entry per day {d,n,ok,w,wo}. w and wo are answers weighted by level difficulty. */
+var dayLog=store.get('solfa-days',[]);
+if(!Array.isArray(dayLog)) dayLog=[];
+function cleanHist(h){ return h.filter(function(x){return x&&typeof x.d==='string'&&typeof x.n==='number'}).map(function(x){return {d:x.d,n:x.n,ok:x.ok||0,w:x.w||x.n,wo:x.wo||x.ok||0}}).sort(function(a,b){return a.d<b.d?-1:1}).slice(-120); }
+dayLog=cleanHist(dayLog);
+var LW={starter:0.8,easy:1,medium:1.2,hard:1.4,expert:1.6}, GOAL=20;
+function keyAgo(k){var d=new Date(); d.setDate(d.getDate()-k); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+function logHist(ok){
+  var t=keyAgo(0), e=dayLog[dayLog.length-1], w=LW[cfg.level]||1;
+  if(!e||e.d!==t){ e={d:t,n:0,ok:0,w:0,wo:0}; dayLog.push(e); if(dayLog.length>120) dayLog.shift(); }
+  e.n++; e.w+=w; if(ok){e.ok++; e.wo+=w;}
+}
 
 var sess={n:0,ok:0,streak:0,best:0};
 var timedOut=false;
@@ -711,7 +753,7 @@ els.ring.style.strokeDasharray=CIRC.toFixed(2);
 els.ring.style.strokeDashoffset='0';
 
 function saveCfg(){store.set('solfa-cfg',cfg)}
-function saveLife(){store.set('solfa-life',life); syncSoon();}
+function saveLife(){store.set('solfa-life',life); store.set('solfa-days',dayLog); syncSoon();}
 function label(i){return SYL[i].hi?'Do (high)':SYL[i].n}
 function keyHidden(){var L=levelById(cfg.level); return !!(L&&L.hideKey)}
 function hideNow(){return keyHidden()&&phase==='asking'}
@@ -1139,6 +1181,7 @@ function rate(ok){
 }
 function record(i,ok){
   life[i].n++; if(ok) life[i].ok++;
+  logHist(ok);
   sess.n++;
   if(ok){sess.ok++; sess.streak++; if(sess.streak>sess.best) sess.best=sess.streak}
   else sess.streak=0;
@@ -1434,6 +1477,12 @@ function pullAndMerge(){
     if(Array.isArray(c.life)){
       for(i=0;i<N;i++){ var cl=c.life[i]; if(cl&&typeof cl.n==='number'&&cl.n>life[i].n) life[i]={ok:cl.ok||0,n:cl.n}; }
     }
+    if(Array.isArray(c.dayLog)){
+      var byD={}; dayLog.forEach(function(x){byD[x.d]=x});
+      cleanHist(c.dayLog).forEach(function(x){ if(!byD[x.d]||x.n>byD[x.d].n) byD[x.d]=x; });
+      dayLog=cleanHist(Object.keys(byD).map(function(k){return byD[k]}));
+      store.set('solfa-days',dayLog);
+    }
     if(c.bk){
       if(typeof c.bk.best==='number'&&c.bk.best>bk.best) bk.best=c.bk.best;
       if(typeof c.bk.out==='number'&&c.bk.out>bk.out) bk.out=c.bk.out;
@@ -1445,7 +1494,7 @@ function pullAndMerge(){
 }
 function pushNow(){
   if(!FB||!fbUser) return Promise.resolve();
-  return FB.f.setDoc(FB.f.doc(FB.db,'users',fbUser.uid),{life:life,bk:bk,updated:FB.f.serverTimestamp()},{merge:true})
+  return FB.f.setDoc(FB.f.doc(FB.db,'users',fbUser.uid),{life:life,dayLog:dayLog,bk:bk,updated:FB.f.serverTimestamp()},{merge:true})
     .then(function(){ setAcStatus('Your progress is saved to your account.'); })
     .catch(function(){ setAcStatus('Could not sync. It will try again later.'); });
 }
@@ -1577,16 +1626,77 @@ function renderStats(){
   els.stScore.textContent=(sess.n?Math.round(100*sess.ok/sess.n):0)+'%';
   els.stStreak.textContent=sess.streak;
   els.stAns.textContent=sess.n;
+  renderRating();
   var host=$('#bars'); host.innerHTML='';
   ORDER.forEach(function(i){
     var sy=SYL[i], l=life[i];
     var pct=l.n?Math.round(100*l.ok/l.n):0;
-    var row=document.createElement('div'); row.className='bar';
+    var row=document.createElement('div'); row.className='bar'+(sy.minor?' minor':'');
     row.innerHTML='<span class="lbl">'+(sy.hi?'Do↑':sy.n)+'</span>'+
       '<span class="track"><span class="fill" style="display:block;width:'+pct+'%"></span></span>'+
       '<span class="val">'+(l.n?pct+'% of '+l.n:'no tries')+'</span>';
     host.appendChild(row);
   });
+}
+function sumDays(a,b){
+  var keys={}, k, r={n:0,ok:0,w:0,wo:0};
+  for(k=a;k<=b;k++) keys[keyAgo(k)]=1;
+  dayLog.forEach(function(h){ if(keys[h.d]){r.n+=h.n;r.ok+=h.ok;r.w+=h.w;r.wo+=h.wo} });
+  return r;
+}
+function renderRating(){
+  var total=0,okAll=0; life.forEach(function(l){total+=l.n; okAll+=l.ok});
+  var rec=sumDays(0,13);
+  var acc=total?okAll/total:0;
+  var base=rec.n>=20? rec.ok/rec.n : acc;
+  var avgW=rec.n>=20? rec.w/rec.n : 1;
+  var f=0.7+0.3*Math.max(0,Math.min(1,(avgW-0.8)/0.8));
+  var score=Math.round(100*base*f);
+  var name,msg;
+  if(total<100){
+    name='Calibrating';
+    msg='Answer '+(100-total)+' more and SET will rate you. Until then, just train.';
+    $('#lvFill').style.width=Math.min(100,total)+'%';
+    $('#lvScore').textContent=total>=20?'Provisional '+score+'%':total+' / 100 answers';
+  } else {
+    var band=score<40?0:score<60?1:score<75?2:score<88?3:4;
+    name=['Beginner','Developing','Solid','Sharp','Choir-ready'][band];
+    msg=['You are still building the basics. Train a little every day and go slowly.',
+      'You are making progress but not reliable yet. Train harder: aim for 20 or more answers a day.',
+      'Solid. Try Medium or Hard with the timer to sharpen up.',
+      'Sharp. Hard and Expert levels are your next step.',
+      'Choir-ready. Keep it fresh with a short daily session.'][band];
+    $('#lvFill').style.width=score+'%';
+    $('#lvScore').textContent=score+'%';
+  }
+  $('#lvName').textContent=name; $('#lvMsg').textContent=msg;
+  var a=sumDays(0,6), b=sumDays(7,13), tr=$('#lvTrend');
+  tr.className='';
+  if(a.n>=10&&b.n>=10){
+    var d=100*(a.ok/a.n-b.ok/b.n);
+    if(d>=3){tr.className='up'; tr.textContent='▲ Improving (+'+Math.round(d)+'% this week)';}
+    else if(d<=-3){tr.className='dn'; tr.textContent='▼ Slipping ('+Math.round(d)+'% this week)';}
+    else tr.textContent='● Steady this week';
+  } else tr.textContent='Practise on a few days to see your trend';
+  var pts=[],k,i;
+  for(k=13;k>=0;k--){ var r1=sumDays(k,k); pts.push(r1.n? r1.ok/r1.n : null); }
+  var path='', dots='';
+  pts.forEach(function(v,i2){ if(v===null) return; var x=(i2/13*100).toFixed(1), y=(27-v*24).toFixed(1);
+    path+=(path?'L':'M')+x+' '+y; dots+='<circle cx="'+x+'" cy="'+y+'" r="2" fill="currentColor"/>'; });
+  $('#lvSpark').innerHTML=path?'<path d="'+path+'" fill="none" stroke="currentColor" stroke-width="1.6" vector-effect="non-scaling-stroke" style="color:var(--accent-text)"/>':'';
+  var today=sumDays(0,0).n, streak=0;
+  k=today>0?0:1;
+  while(k<120 && sumDays(k,k).n>0){streak++; k++;}
+  $('#dToday').textContent=today; $('#dGoal').textContent=GOAL; $('#dStreak').textContent=streak; $('#dTotal').textContent=total;
+  var weak=[];
+  ORDER.forEach(function(i2){ var l=life[i2]; if(cfg.notes[i2]&&l.n>=5){ var pc=Math.round(100*l.ok/l.n); if(pc<80) weak.push({i:i2,p:pc}); } });
+  weak.sort(function(x,y){return x.p-y.p}); weak=weak.slice(0,3);
+  var wt=$('#wkText'), wb=$('#wkBtn');
+  if(weak.length){
+    wt.textContent='These need work: '+weak.map(function(x){return label(x.i)+' '+x.p+'%'}).join(', ')+'.';
+    wb.hidden=cfg.weak;
+    if(cfg.weak) wt.textContent+=' Weak-note practice is on.';
+  } else { wt.textContent='Nothing weak yet. Spots appear after 5 tries on a note.'; wb.hidden=true; }
 }
 function renderLevels(){
   var host=$('#levelList'); host.innerHTML='';
@@ -1726,6 +1836,7 @@ $('#keysAll').addEventListener('click',function(){
   cfg.keys=keysFor('all'); cfg.level='custom'; saveCfg(); renderChips(); renderLevels(); update();
 });
 $('#range').addEventListener('change',function(e){cfg.range=e.target.value; saveCfg()});
+$('#wkBtn').addEventListener('click',function(){ cfg.weak=true; $('#weak').checked=true; saveCfg(); renderStats(); });
 $('#weak').addEventListener('change',function(e){cfg.weak=e.target.checked; saveCfg()});
 
 var resetArmed=false, resetTimer=null;
@@ -1737,7 +1848,7 @@ $('#reset').addEventListener('click',function(){
     return;
   }
   clearTimeout(resetTimer); resetArmed=false; btn.textContent='Clear saved progress';
-  life=SYL.map(function(){return {ok:0,n:0}}); sess={n:0,ok:0,streak:0,best:0};
+  life=SYL.map(function(){return {ok:0,n:0}}); dayLog=[]; store.del('solfa-days'); sess={n:0,ok:0,streak:0,best:0};
   store.del('solfa-life'); renderStats(); syncSoon();
 });
 
