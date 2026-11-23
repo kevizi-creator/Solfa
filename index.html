@@ -1543,6 +1543,7 @@ function signIn(){
   fbLoad().then(function(f){
     if(!f) throw {code:'nofb'};
     var prov=new f.a.GoogleAuthProvider();
+    try{ prov.setCustomParameters({prompt:'select_account'}); }catch(e){}
     return f.a.signInWithPopup(f.auth,prov).catch(function(e){
       if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'||e.code==='auth/web-storage-unsupported')) return f.a.signInWithRedirect(f.auth,prov);
       throw e;
