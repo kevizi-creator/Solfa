@@ -1463,17 +1463,23 @@ function renderBreath(){
 /* ---------- account and cloud sync ----------
    Only active when the hosting page sets window.SOLFA_FIREBASE. Without it the app is local-only. */
 var FBCFG=window.SOLFA_FIREBASE||null, FB=null, fbLoading=null, fbUser=null, fbBusy=false, syncTimer=null, acMsg='';
-var FBBASE='https://www.gstatic.com/firebasejs/10.14.1/';
+var FBNAMES=['app','auth','firestore'], fbErr='';
+function fbUrls(i){
+  return FBNAMES.map(function(n){ return i===0 ? 'https://www.gstatic.com/firebasejs/10.14.1/firebase-'+n+'.js' : 'https://cdn.jsdelivr.net/npm/firebase@10.14.1/'+n+'/+esm'; });
+}
+function fbImport(i){ return Promise.all(fbUrls(i).map(function(u){ return import(u); })); }
+function fbWhy(e){ var t=(e&&(e.name?e.name+': ':'')+(e.message||e.code||''))||String(e); return String(t).slice(0,70); }
 function fbLoad(){
   if(FB) return Promise.resolve(FB);
   if(!FBCFG) return Promise.resolve(null);
   if(fbLoading) return fbLoading;
-  fbLoading=Promise.all([import(FBBASE+'firebase-app.js'),import(FBBASE+'firebase-auth.js'),import(FBBASE+'firebase-firestore.js')]).then(function(m){
+  fbErr='';
+  fbLoading=fbImport(0).catch(function(e){ fbErr='A: '+fbWhy(e); return fbImport(1); }).then(function(m){
     var app=m[0].initializeApp(FBCFG);
     FB={a:m[1],f:m[2],auth:m[1].getAuth(app),db:m[2].getFirestore(app)};
     FB.a.onAuthStateChanged(FB.auth,onUser);
     return FB;
-  }).catch(function(){ fbLoading=null; return null; });
+  }).catch(function(e){ fbErr+=(fbErr?' | B: ':'')+fbWhy(e); fbLoading=null; return null; });
   return fbLoading;
 }
 function setAcStatus(t){ var e=$('#acStatus'); if(e) e.textContent=t; }
@@ -1543,7 +1549,7 @@ function signIn(){
     });
   }).then(function(){ acMsg=''; }).catch(function(e){
     var c=e&&e.code;
-    acMsg=c==='nofb'?'Cannot reach the sign-in service. Check your connection.'
+    acMsg=c==='nofb'?'Cannot reach the sign-in service ('+(fbErr||'no details')+'). Check your connection and try again.'
       :(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')?'Sign-in was cancelled.'
       :c==='auth/unauthorized-domain'?'This web address is not approved for sign-in yet.'
       :c==='auth/network-request-failed'?'No connection. Check your internet and try again.'
