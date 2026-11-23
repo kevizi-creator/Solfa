@@ -81,6 +81,9 @@ button:disabled{cursor:default}
 .bprompt .prompt{flex:1; margin:0; text-align:center}
 .btn.easier{flex:1; min-width:0; min-height:48px; border-color:var(--accent); color:var(--accent-text)}
 .btn.finish{flex:1; min-width:0; min-height:48px}
+.icon-btn .ini{font-weight:700;font-size:16px;line-height:1}
+.icon-btn.has-ini svg{display:none}
+.hi{margin:2px 0 0;text-align:center;font-size:13px;color:var(--accent-text)}
 .icon-btn.on{border-color:var(--accent); color:var(--accent-text)}
 .btn.google{width:100%; min-height:52px; display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#1F1F1F; border-color:#fff; font-size:1rem}
 .btn.google svg{width:20px; height:20px; flex:none}
@@ -275,7 +278,7 @@ select{font:inherit; min-height:46px; border-radius:10px; border:1px solid var(-
 </head><body>
 <script>
 /* Firebase settings for Google sign-in. Leave as null to run without accounts. */
-window.SOLFA_FIREBASE=null;
+window.SOLFA_FIREBASE={"apiKey":"AIzaSyCCvVm904aIeKvQtmMIjUeEtOsVRtGp9_4","authDomain":"set-ear-trainer.firebaseapp.com","projectId":"set-ear-trainer","storageBucket":"set-ear-trainer.firebasestorage.app","messagingSenderId":"602712664139","appId":"1:602712664139:web:7675f90fad4e92fa6e45ce"};
 try{
   if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
     window.addEventListener('load',function(){
@@ -320,12 +323,13 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>
     </button>
     <button type="button" class="icon-btn" id="openAccount" aria-label="Account" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span class="ini" id="acIni" hidden></span>
     </button>
     <button type="button" class="icon-btn" id="openSettings" aria-label="Settings and level">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg>
     </button>
   </header>
+  <p class="hi" id="hiLine" hidden></p>
 
   <div class="seg three" role="group" aria-label="Practice mode">
     <button type="button" id="modeIdentify" aria-pressed="true">
@@ -1455,6 +1459,10 @@ function renderAccount(){
   $('#openAccount').classList.toggle('on',on);
   $('#acGoogle').disabled=fbBusy;
   if(on){ $('#acName').textContent=fbUser.displayName||fbUser.email||'Signed in'; $('#acEmail').textContent=fbUser.email||''; }
+  var fn=on?String(fbUser.displayName||fbUser.email||'').trim().split(/[\s@]+/)[0]:'';
+  var ini=$('#acIni'); ini.hidden=!fn; ini.textContent=fn?fn.charAt(0).toUpperCase():'';
+  $('#openAccount').classList.toggle('has-ini',!!fn);
+  var hi=$('#hiLine'); hi.hidden=!fn; hi.textContent=fn?'Hi, '+fn:'';
   $('#acMsg').textContent=acMsg;
 }
 function signIn(){
