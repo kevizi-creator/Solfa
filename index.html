@@ -259,6 +259,11 @@ select{font:inherit; min-height:46px; border-radius:10px; border:1px solid var(-
 .trend{display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:.85rem; font-weight:600}
 .trend svg{width:46%; height:34px; flex:none; overflow:visible}
 .trend .up{color:var(--good)} .trend .dn{color:var(--bad)}
+.nudge{display:flex; align-items:center; justify-content:space-between; gap:8px; margin:6px 0 0; padding:4px 4px 4px 12px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; font-size:.8rem; line-height:1.3}
+.nudge button{flex:none; width:32px; height:32px; border:0; background:none; color:var(--muted); font-size:1.2rem; line-height:1}
+.remrow{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:6px}
+.remrow input{min-height:44px; padding:0 10px; border-radius:12px; border:1px solid var(--line); background:var(--surface-2); color:var(--fg); font:inherit; font-weight:600}
+.remrow button{min-height:44px; padding:0 14px; border-radius:999px; border:1px solid var(--accent); background:transparent; color:var(--accent-text); font-weight:600}
 .weakbox{margin:0 0 16px; font-size:.88rem; line-height:1.45}
 .weakbox button{margin-top:6px; min-height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--accent); background:transparent; color:var(--accent-text); font-weight:600}
 .bar .val{text-align:right; color:var(--muted); font-variant-numeric:tabular-nums}
@@ -345,6 +350,7 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
     </button>
   </header>
   <p class="hi" id="hiLine" hidden></p>
+  <div class="nudge" id="nudge" hidden><span id="nudgeTxt"></span><button type="button" id="nudgeX" aria-label="Dismiss">×</button></div>
 
   <div class="seg three" role="group" aria-label="Practice mode">
     <button type="button" id="modeIdentify" aria-pressed="true">
@@ -612,6 +618,9 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
         <div class="num"><b id="dStreak">0</b><span>day streak</span></div>
         <div class="num"><b id="dTotal">0</b><span>answered, all time</span></div>
       </div>
+      <h3>Daily reminder</h3>
+      <div class="remrow"><input type="time" id="remTime" value="18:00" aria-label="Reminder time"><button type="button" id="remBtn">Add to my calendar</button></div>
+      <p class="legend" id="remMsg">Adds a repeating daily event with an alert to your phone's calendar. You only do this once.</p>
       <h3>Weak spots</h3>
       <div class="weakbox"><span id="wkText"></span><br><button type="button" id="wkBtn" hidden>Practise these more</button></div>
       <h3>This session</h3>
@@ -1630,7 +1639,7 @@ function renderStats(){
   els.stScore.textContent=(sess.n?Math.round(100*sess.ok/sess.n):0)+'%';
   els.stStreak.textContent=sess.streak;
   els.stAns.textContent=sess.n;
-  renderRating();
+  renderRating(); renderNudge();
   var host=$('#bars'); host.innerHTML='';
   ORDER.forEach(function(i){
     var sy=SYL[i], l=life[i];
@@ -1701,6 +1710,41 @@ function renderRating(){
     wb.hidden=cfg.weak;
     if(cfg.weak) wt.textContent+=' Weak-note practice is on.';
   } else { wt.textContent='Nothing weak yet. Spots appear after 5 tries on a note.'; wb.hidden=true; }
+}
+function renderNudge(){
+  var box=$('#nudge'); if(!box) return;
+  var today=sumDays(0,0).n, dis=false;
+  try{ dis=localStorage.getItem('solfa-nudge')===keyAgo(0); }catch(e){}
+  if(today>=GOAL||dis){ box.hidden=true; return; }
+  var total=0; life.forEach(function(l){total+=l.n});
+  var streak=0,k=1,gap=0,txt;
+  while(k<120&&sumDays(k,k).n>0){streak++;k++;}
+  if(!streak){ for(k=1;k<120;k++){ if(sumDays(k,k).n>0){gap=k;break;} } }
+  if(today>0) txt=(GOAL-today)+' more answers to reach today\'s goal.';
+  else if(streak>0) txt=streak+'-day streak. Do '+GOAL+' answers today to keep it going.';
+  else if(gap>1) txt='You have not practised in '+gap+' days. A 5-minute session is enough.';
+  else txt=total?'Do '+GOAL+' answers today to start a streak.':'Welcome. Do '+GOAL+' answers today to start your streak.';
+  $('#nudgeTxt').textContent=txt; box.hidden=false;
+}
+function addReminder(){
+  var v=$('#remTime').value||'18:00', h=+v.slice(0,2), m=+v.slice(3,5), msg=$('#remMsg');
+  function p2(n){return ('0'+n).slice(-2)}
+  function f(d){return d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+'T'+p2(d.getHours())+p2(d.getMinutes())+'00'}
+  var now=new Date(), st=new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m,0);
+  if(st<=now) st.setDate(st.getDate()+1);
+  var stamp=now.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+  var ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SET Solfa Ear Trainer//EN','CALSCALE:GREGORIAN','BEGIN:VEVENT',
+    'UID:set-daily-reminder@kevizi-creator.github.io','DTSTAMP:'+stamp,'DTSTART:'+f(st),'DURATION:PT15M','RRULE:FREQ=DAILY',
+    'SUMMARY:SET: 10 minutes of ear training','DESCRIPTION:Open SET and do 20 answers to keep your streak going.',
+    'BEGIN:VALARM','TRIGGER:PT0S','ACTION:DISPLAY','DESCRIPTION:SET ear training','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n')+'\r\n';
+  try{
+    var url=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));
+    var a=document.createElement('a'); a.href=url; a.download='set-daily-reminder.ics'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url)},4000);
+    msg.textContent='Now open the file that was just downloaded and choose Add to calendar. If nothing opens, check your downloads.';
+  }catch(e){
+    msg.textContent='Could not create the reminder on this phone. You can set a daily alarm yourself at '+v+'.';
+  }
 }
 function renderLevels(){
   var host=$('#levelList'); host.innerHTML='';
@@ -1840,6 +1884,8 @@ $('#keysAll').addEventListener('click',function(){
   cfg.keys=keysFor('all'); cfg.level='custom'; saveCfg(); renderChips(); renderLevels(); update();
 });
 $('#range').addEventListener('change',function(e){cfg.range=e.target.value; saveCfg()});
+$('#remBtn').addEventListener('click',addReminder);
+$('#nudgeX').addEventListener('click',function(){ try{localStorage.setItem('solfa-nudge',keyAgo(0))}catch(e){} $('#nudge').hidden=true; });
 $('#wkBtn').addEventListener('click',function(){ cfg.weak=true; $('#weak').checked=true; saveCfg(); renderStats(); });
 $('#weak').addEventListener('change',function(e){cfg.weak=e.target.checked; saveCfg()});
 
