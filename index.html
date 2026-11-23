@@ -549,7 +549,7 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
         <li><b>Sing it out loud</b> right after you hear it. It sticks better than listening alone.</li>
         <li><b>Link notes to tunes.</b> The first two notes of "Twinkle, Twinkle" are Do and So. Use songs from your own choir.</li>
         <li><b>Build up slowly.</b> Begin at Starter, then move up a level when you score well.</li>
-        <li><b>Hear minor.</b> Me, Le and Te sound darker than Mi, La and Ti. Use Hear scale to compare the major and minor scales.</li>
+        <li><b>Hear minor.</b> Ri, Si and Li sound darker than Mi, La and Ti. Use Hear scale to compare the major and minor scales.</li>
         <li><b>Short and often.</b> Ten minutes a day beats one long session.</li>
       </ol>
       <h3>Why train your ear</h3>
@@ -561,7 +561,7 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
         <li><b>Keep your own part</b> when others sing different harmony notes around you.</li>
       </ul>
       <h3>How long will ear training take?</h3>
-      <p>With about 10 minutes a day, most people name Do, Mi and So reliably in 1 to 2 weeks. The full major scale usually takes 4 to 8 weeks, and the minor notes (Me, Le, Te) and all 12 keys about 2 to 3 months. Everyone is different. Move up a level when you score well, not before.</p>
+      <p>With about 10 minutes a day, most people name Do, Mi and So reliably in 1 to 2 weeks. The full major scale usually takes 4 to 8 weeks, and the in-between notes (Di, Ri, Fi, Si, Li) and all 12 keys about 2 to 3 months. Everyone is different. Move up a level when you score well, not before.</p>
       <h3>Breath control</h3>
       <ol>
         <li><b>Breathe low.</b> Let your belly and lower ribs widen as you breathe in. Keep your shoulders down and still.</li>
@@ -621,7 +621,7 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
         <div class="num"><b id="sStreak">0</b><span>streak (best <span id="sBest">0</span>)</span></div>
       </div>
       <h3>Accuracy by note, all sessions</h3>
-      <p class="legend"><b>Orange</b> = minor notes (Me, Le, Te)</p>
+      <p class="legend"><b>Orange</b> = the in-between notes: Di, Ri, Fi, Si, Li</p>
       <div class="bars" id="bars"></div>
       <button type="button" class="link" id="reset">Clear saved progress</button>
     </div>
@@ -652,7 +652,8 @@ var $=function(s){return document.querySelector(s)};
 var SYL=[
   {n:'Do',s:0,d:0},{n:'Re',s:2,d:1},{n:'Mi',s:4,d:2},{n:'Fa',s:5,d:3},
   {n:'So',s:7,d:4},{n:'La',s:9,d:5},{n:'Ti',s:11,d:6},{n:'Do',s:12,d:7,hi:true},
-  {n:'Me',s:3,d:2,minor:true},{n:'Le',s:8,d:5,minor:true},{n:'Te',s:10,d:6,minor:true}
+  {n:'Ri',s:3,d:2,minor:true},{n:'Si',s:8,d:5,minor:true},{n:'Li',s:10,d:6,minor:true},
+  {n:'Di',s:1,d:1,minor:true},{n:'Fi',s:6,d:3,minor:true}
 ];
 var KEYS=[
   {n:'C',pc:0,L:0},{n:'D♭',pc:1,L:1},{n:'D',pc:2,L:1},{n:'E♭',pc:3,L:2},
@@ -669,11 +670,12 @@ function spell(key,idx){
 /*THEORY_END*/
 
 var N=SYL.length;
-var ORDER=[0,1,8,2,3,4,9,5,10,6,7];   // pitch order for buttons and lists
+var ORDER=[0,11,1,8,2,3,12,4,9,5,10,6,7];   // pitch order for buttons and lists
 var TIPS=[
   'Home. Everything rests here.','Leaning. Wants to fall to Do.','Bright and settled.','Tense. Wants to fall to Mi.',
   'Strong and open.','Yearning. Wants to fall to So.','Very tense. Pulls up to Do.','Home again, an octave up.',
-  'Dark colour. A lowered Mi.','Heavy. A lowered La, falls to So.','Soft. A lowered Ti.'
+  'Dark colour. A lowered Mi.','Heavy. A lowered La, falls to So.','Soft. A lowered Ti.',
+  'A tight half step above Do. Leans up to Re.','The tritone. Restless, halfway between Fa and So.'
 ];
 var BASE={low:45,mid:52,high:57};
 var TIMERS=[0,5,10,15,20];
@@ -683,13 +685,13 @@ var CIRC=2*Math.PI*92;
 
 function notesFor(list){return SYL.map(function(_,i){return list.indexOf(i)>=0?1:0})}
 function keysFor(names){return KEYS.map(function(k){return (names==='all'||names.indexOf(k.n)>=0)?1:0})}
-var ALL=[0,1,2,3,4,5,6,7,8,9,10], CFG3=['C','F','G'];
+var ALL=[0,1,2,3,4,5,6,7,8,9,10], ALL13=[0,1,2,3,4,5,6,7,8,9,10,11,12], CFG3=['C','F','G'];
 var LEVELS=[
   {id:'starter',name:'Starter',desc:'Do, Mi and So only. Keys C, F and G. No timer.',notes:[0,2,4],keys:CFG3,timer:0},
   {id:'easy',name:'Easy',desc:'The whole major scale, Do to Ti. Keys C, F and G. No timer.',notes:[0,1,2,3,4,5,6],keys:CFG3,timer:0},
   {id:'medium',name:'Medium',desc:'The scale plus high Do, in all 12 keys. 20 second timer.',notes:[0,1,2,3,4,5,6,7],keys:'all',timer:20},
-  {id:'hard',name:'Hard',desc:'Adds the minor notes Me, Le and Te. All keys. 15 second timer.',notes:ALL,keys:'all',timer:15},
-  {id:'expert',name:'Expert',desc:'All notes, all keys, 10 second timer. The key name stays hidden.',notes:ALL,keys:'all',timer:10,hideKey:true}
+  {id:'hard',name:'Hard',desc:'Adds the dark notes Ri, Si and Li. All keys. 15 second timer.',notes:ALL,keys:'all',timer:15},
+  {id:'expert',name:'Expert',desc:'All 13 notes, adding Di and Fi. All keys, 10 second timer. The key name stays hidden.',notes:ALL13,keys:'all',timer:10,hideKey:true}
 ];
 function levelById(id){for(var i=0;i<LEVELS.length;i++){if(LEVELS[i].id===id) return LEVELS[i]} return null}
 
@@ -707,8 +709,10 @@ Object.keys(cfg).forEach(function(k){ if(saved[k]!==undefined) cfg[k]=saved[k]; 
 if(hadSaved&&saved.level===undefined) cfg.level='custom';
 if(cfg.level!=='custom'&&!levelById(cfg.level)) cfg.level='custom';
 if(!Array.isArray(cfg.notes)) cfg.notes=notesFor(easy.notes);
+var oldNotesLen=cfg.notes.length;
 while(cfg.notes.length<N) cfg.notes.push(0);
 cfg.notes=cfg.notes.slice(0,N);
+if(oldNotesLen<N&&cfg.level==='expert') cfg.notes=notesFor(ALL13);
 if(!cfg.notes.some(Boolean)) cfg.notes=notesFor(easy.notes);
 if(!Array.isArray(cfg.keys)||cfg.keys.length!==12||!cfg.keys.some(Boolean)) cfg.keys=keysFor(easy.keys);
 if(!BASE[cfg.range]) cfg.range='mid';
@@ -897,7 +901,7 @@ function doMsg(){ return hideNow()?'This is Do':'This is Do in the key of '+q.ke
 
 /* ---------- feedback text ---------- */
 function note1(i){ return '<b>'+label(i)+'</b> ('+spell(q.key,i)+' in '+q.key.n+')'; }
-function tip(i){ return '<span class="tip">'+TIPS[i]+'</span>'; }
+function tip(i){ return '<span class="tip">'+TIPS[i]+''+'</span>'; }
 
 /* ---------- timer ---------- */
 var tTimer=null, tEnd=0, tRem=null;   // tRem: seconds left while paused for a replay
