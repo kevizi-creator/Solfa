@@ -839,7 +839,17 @@ function noiseVerdict(hist,wasNoisy){
 
 /* ---------- audio out ---------- */
 var ctx=null, bus=null, timers=[];
+/* iPhone: the side silent switch mutes web audio unless the page asks for a "playback" audio session. */
+var SILENT_WAV='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=', silentEl=null;
+function playbackSession(){
+  try{ if(navigator.audioSession) navigator.audioSession.type=(typeof micOn!=='undefined'&&micOn)?'play-and-record':'playback'; }catch(e){}
+  if(!silentEl){
+    try{ silentEl=new Audio(SILENT_WAV); silentEl.loop=true; silentEl.setAttribute('playsinline',''); silentEl.volume=0.01; }catch(e){ silentEl=null; }
+  }
+  if(silentEl&&silentEl.paused){ try{ var pr=silentEl.play(); if(pr&&pr.catch) pr.catch(function(){}); }catch(e){} }
+}
 function ensureCtx(){
+  playbackSession();
   if(!ctx){
     var AC=window.AudioContext||window.webkitAudioContext;
     if(!AC) return null;
@@ -989,7 +999,7 @@ function enableMic(){
       analyser=c.createAnalyser(); analyser.fftSize=2048;
       src.connect(analyser);
       abuf=new Float32Array(analyser.fftSize);
-      micOn=true; micFailed=false; els.micBtn.disabled=false; hist=[]; histN=0; noisy=false; renderNoise(); update();
+      micOn=true; try{ if(navigator.audioSession) navigator.audioSession.type='play-and-record'; }catch(e){} micFailed=false; els.micBtn.disabled=false; hist=[]; histN=0; noisy=false; renderNoise(); update();
       if(phase==='asking'&&cfg.mode==='sing') startListening();
       else ambientCheck();
     })
