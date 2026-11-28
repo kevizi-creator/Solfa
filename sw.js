@@ -1,5 +1,5 @@
 /* Solfa Ear Trainer service worker: opens offline, and picks up new versions when online. */
-const CACHE='solfa-v20';
+const CACHE='solfa-v21';
 const SHELL=['./','index.html','manifest.json','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>Promise.all(SHELL.map(u=>c.add(u).catch(()=>{})))).then(()=>self.skipWaiting()));

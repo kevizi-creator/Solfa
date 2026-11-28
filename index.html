@@ -515,6 +515,14 @@ try{ if(/Android/i.test(navigator.userAgent)&&window.matchMedia('(display-mode: 
             <option value="high">High</option>
           </select>
         </div>
+        <div>
+          <h3>Sound</h3>
+          <select id="soundSel" aria-label="Sound">
+            <option value="piano">Piano</option>
+            <option value="classic">Steady tone (classic)</option>
+          </select>
+          <p class="foot" id="soundMsg" aria-live="polite" style="margin-top:6px"></p>
+        </div>
         <label class="check"><input type="checkbox" id="weak"> Ask weaker notes more often</label>
         <p class="foot">Changing notes or keys switches your level to Custom. Pick a ready-made level with the Level button. Keyboard: 1 to 9 and 0 answer, R replays, M replays the mystery note, N goes to the next question.</p>
       </div>
@@ -724,7 +732,7 @@ var store={
 };
 
 var easy=levelById('easy');
-var cfg={level:'easy',notes:notesFor(easy.notes),keys:keysFor(easy.keys),range:'mid',weak:false,mode:'identify',sub:'solfa',bsub:'guide',pat:1,hold:10,cstart:6,timer:easy.timer};
+var cfg={level:'easy',notes:notesFor(easy.notes),keys:keysFor(easy.keys),range:'mid',weak:false,mode:'identify',sub:'solfa',bsub:'guide',pat:1,hold:10,cstart:6,timer:easy.timer,sound:'piano'};
 var saved=store.get('solfa-cfg',{})||{};
 var hadSaved=Object.keys(saved).length>0;
 Object.keys(cfg).forEach(function(k){ if(saved[k]!==undefined) cfg[k]=saved[k]; });
@@ -745,6 +753,7 @@ if(!(cfg.pat>=0&&cfg.pat<=3)) cfg.pat=1;
 if([5,10,15,20].indexOf(cfg.hold)<0) cfg.hold=10;
 if(cfg.sub!=='solfa'&&cfg.sub!=='echo') cfg.sub='solfa';
 if(TIMERS.indexOf(cfg.timer)<0) cfg.timer=0;
+if(cfg.sound!=='classic'&&cfg.sound!=='piano') cfg.sound='piano';
 
 var life=store.get('solfa-life',null);
 if(!Array.isArray(life)) life=[];
@@ -867,7 +876,44 @@ function stopAll(){
   }
 }
 var PARTIALS=[[1,1],[2,0.45],[3,0.22],[4,0.1],[6,0.04]];
+/* Piano: recorded notes, loaded the first time Piano is chosen (file piano.js), then kept for offline use. */
+var PIANO={state:'none',bufs:[],roots:[],loop:[1.2,2.8]};
+function pianoMsg(){
+  var m=$('#soundMsg'); if(!m) return;
+  m.textContent=cfg.sound!=='piano'?'':(PIANO.state==='ready'?'Piano is ready.':(PIANO.state==='loading'?'Loading the piano sound…':(PIANO.state==='failed'?'The piano could not load, so the classic tone is used. Check your internet and try again.':'')));
+}
+function decodeBuf(c,ab){ return new Promise(function(res,rej){ try{ var p=c.decodeAudioData(ab,res,rej); if(p&&p.then) p.then(res,rej); }catch(e){rej(e)} }); }
+function b64ab(b){ var bin=atob(b), n=bin.length, u=new Uint8Array(n); for(var i=0;i<n;i++) u[i]=bin.charCodeAt(i); return u.buffer; }
+function loadPiano(){
+  if(PIANO.state==='ready'||PIANO.state==='loading') return;
+  PIANO.state='loading'; pianoMsg();
+  var fail=function(){ PIANO.state='failed'; pianoMsg(); };
+  var use=function(){
+    var d=window.SOLFA_PIANO, c=ensureCtx();
+    if(!d||!c||!d.samples||!d.samples.length){ fail(); return; }
+    Promise.all(d.samples.map(function(sm){ return decodeBuf(c,b64ab(sm.b64)); })).then(function(bufs){
+      PIANO.bufs=bufs; PIANO.roots=d.samples.map(function(sm){return sm.root}); PIANO.loop=d.loop||[1.2,2.8];
+      PIANO.state='ready'; pianoMsg();
+    }).catch(fail);
+  };
+  if(window.SOLFA_PIANO){ use(); return; }
+  var sc=document.createElement('script'); sc.src='piano.js'; sc.onload=use; sc.onerror=fail; document.head.appendChild(sc);
+}
+function pianoTone(c,out,midi,t,dur){
+  var bi=0, best=1e9;
+  PIANO.roots.forEach(function(r,i){ var d=Math.abs(midi-r); if(d<best){best=d; bi=i} });
+  var src=c.createBufferSource(); src.buffer=PIANO.bufs[bi];
+  src.playbackRate.value=Math.pow(2,(midi-PIANO.roots[bi])/12);
+  src.loop=true; src.loopStart=PIANO.loop[0]; src.loopEnd=PIANO.loop[1];
+  var env=c.createGain();
+  env.gain.setValueAtTime(0.0001,t);
+  env.gain.linearRampToValueAtTime(1.25,t+0.004);
+  env.gain.setTargetAtTime(0,t+dur,0.12);
+  src.connect(env); env.connect(out);
+  src.start(t); src.stop(t+dur+0.8);
+}
 function tone(c,out,midi,t,dur){
+  if(cfg.sound==='piano'&&PIANO.state==='ready'){ pianoTone(c,out,midi,t,dur); return; }
   var f=440*Math.pow(2,(midi-69)/12);
   var env=c.createGain();
   env.gain.setValueAtTime(0.0001,t);
@@ -1851,6 +1897,7 @@ function renderChips(){
   });
   $('#range').value=cfg.range;
   $('#weak').checked=!!cfg.weak;
+  $('#soundSel').value=cfg.sound; pianoMsg();
 }
 function renderFeel(){
   var host=$('#feelList'); host.innerHTML='';
@@ -1970,6 +2017,12 @@ $('#range').addEventListener('change',function(e){cfg.range=e.target.value; save
 $('#remBtn').addEventListener('click',addReminder);
 $('#nudgeX').addEventListener('click',function(){ try{localStorage.setItem('solfa-nudge',keyAgo(0))}catch(e){} $('#nudge').hidden=true; });
 $('#wkBtn').addEventListener('click',function(){ cfg.weak=true; $('#weak').checked=true; saveCfg(); renderStats(); });
+$('#soundSel').addEventListener('change',function(e){
+  cfg.sound=e.target.value==='piano'?'piano':'classic'; saveCfg();
+  if(cfg.sound==='piano') loadPiano(); pianoMsg();
+  var c=ensureCtx(); if(c){ try{ var g=c.createGain(); g.gain.value=1; g.connect(c.destination);
+    var go=function(){ tone(c,g,60,c.currentTime+0.05,1.0); }; go(); }catch(x){} }
+});
 $('#weak').addEventListener('change',function(e){cfg.weak=e.target.checked; saveCfg()});
 
 var resetArmed=false, resetTimer=null;
@@ -2005,6 +2058,7 @@ document.addEventListener('keydown',function(e){
 });
 
 renderLevels(); renderChips(); renderAnswers(); renderFeel(); renderStats(); update(); paintTimer(cfg.timer);
+if(cfg.sound==='piano') loadPiano();
 })();
 </script>
 
